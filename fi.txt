@@ -1,0 +1,1487 @@
+Below is a single .txt block that contains all programs (Bash & C) from your OS practical set.
+Each program is labeled with its filename (a clear separator === filename ===), the full commented source, and at the end of each file I added concise compile/run instructions and input notes (also notes about macOS vs Ubuntu where relevant).
+
+You can copy the entire block into a file (for example os_practicals_all.txt) or copy individual sections into their respective files. I've kept each program self-contained and included required #includes and basic error checks.
+
+> Tip: For ease, on Ubuntu use gcc -o <binary> <source.c> -lpthread where needed; on macOS gcc invokes clang but commands are the same for these programs. System V IPC (message queue / shm) examples may not work on macOS without extra setup—I mention that per-file.
+
+
+
+
+---
+
+===============================================================================
+=== address_book.sh
+===============================================================================
+#!/bin/bash
+# address_book.sh
+# Simple address book using 'address.txt' with semicolon separated fields: ID;Name;Phone
+
+address_file="address.txt"
+touch "$address_file"
+
+while true; do
+  echo "---- Address Book Menu ----"
+  echo "1. Search Address Book"
+  echo "2. Add Entry"
+  echo "3. Remove Entry"
+  echo "4. Quit"
+  echo -n "Enter choice [1-4]: "
+  read choice
+
+  case $choice in
+    1)
+      echo -n "Enter ID, Name or Phone to search: "
+      read key
+      grep -i -- "$key" "$address_file" || echo "No matching entry found."
+      ;;
+    2)
+      echo -n "Enter ID: "
+      read id
+      echo -n "Enter Name: "
+      read name
+      echo -n "Enter Phone: "
+      read phone
+      echo "${id};${name};${phone}" >> "$address_file"
+      echo "Entry added."
+      ;;
+    3)
+      echo -n "Enter ID of entry to remove: "
+      read id
+      if grep -q "^${id};" "$address_file"; then
+        grep -v "^${id};" "$address_file" > temp && mv temp "$address_file"
+        echo "Entry with ID $id removed."
+      else
+        echo "ID $id not found."
+      fi
+      ;;
+    4)
+      echo "Exiting Address Book."
+      break
+      ;;
+    *)
+      echo "Invalid choice."
+      ;;
+  esac
+done
+
+# How to run:
+# 1) Save as address_book.sh
+# 2) chmod +x address_book.sh
+# 3) ./address_book.sh
+# Input: menu driven, ID;Name;Phone (semi-colon storage). Works same on Ubuntu and macOS.
+
+===============================================================================
+=== phonebook.sh
+===============================================================================
+#!/bin/bash
+# phonebook.sh
+# Tab-separated fields: FirstName<TAB>LastName<TAB>Phone
+
+phonebook="phonebook.txt"
+touch "$phonebook"
+
+while true; do
+  echo "---- Phonebook Menu ----"
+  echo "1. Add Entry"
+  echo "2. Search by Name or Number"
+  echo "3. Sort by Last Name"
+  echo "4. Delete Entry"
+  echo "5. Quit"
+  echo -n "Choice [1-5]: "
+  read choice
+
+  case $choice in
+    1)
+      echo -n "Enter FirstName: " ; read first
+      echo -n "Enter LastName: " ; read last
+      echo -n "Enter Phone: " ; read phone
+      echo -e "${first}\t${last}\t${phone}" >> "$phonebook"
+      echo "Contact added."
+      ;;
+    2)
+      echo -n "Enter name or phone to search: " ; read key
+      grep -i -- "$key" "$phonebook" || echo "No matches found."
+      ;;
+    3)
+      echo "Sorting phonebook by last name..."
+      sort -t $'\t' -k2,2 "$phonebook" -o "$phonebook"
+      echo "Sorted. Current phonebook:"
+      cat "$phonebook"
+      ;;
+    4)
+      echo -n "Enter LastName of entry to delete: " ; read last
+      grep -v -P "\t${last}\t" "$phonebook" > temp && mv temp "$phonebook"
+      echo "Entries with last name '$last' removed (if existed)."
+      ;;
+    5)
+      echo "Goodbye!"
+      break
+      ;;
+    *)
+      echo "Invalid option."
+      ;;
+  esac
+done
+
+# How to run:
+# chmod +x phonebook.sh
+# ./phonebook.sh
+# Input via prompts. Works on both Ubuntu and macOS (note: uses basic utilities only).
+
+===============================================================================
+=== address_book_funcs.sh
+===============================================================================
+#!/bin/bash
+# address_book_funcs.sh
+# Address book using functions and colon-separated fields ID:Name:Phone
+
+file="address2.txt"
+touch "$file"
+
+search() {
+  echo -n "Enter ID or Name to search: "
+  read key
+  grep -i -- "$key" "$file" || echo "No entries found."
+}
+
+add_entry() {
+  echo -n "ID: " ; read id
+  echo -n "Name: " ; read name
+  echo -n "Phone: " ; read phone
+  echo "${id}:${name}:${phone}" >> "$file"
+  echo "Entry added."
+}
+
+remove_or_edit() {
+  echo -n "Enter ID to remove: " ; read id
+  if grep -q "^${id}:" "$file"; then
+    grep -v "^${id}:" "$file" > temp && mv temp "$file"
+    echo "Entry removed."
+  else
+    echo "ID not found."
+  fi
+}
+
+display() {
+  echo "All entries in address book:"
+  cat "$file"
+}
+
+while true; do
+  echo "---- Address Book Menu ----"
+  echo "1. Search"
+  echo "2. Add Entry"
+  echo "3. Remove Entry"
+  echo "4. Display All"
+  echo "5. Quit"
+  echo -n "Choose [1-5]: "
+  read ch
+  case $ch in
+    1) search ;;
+    2) add_entry ;;
+    3) remove_or_edit ;;
+    4) display ;;
+    5) echo "Bye"; break ;;
+    *) echo "Invalid choice." ;;
+  esac
+done
+
+# How to run:
+# chmod +x address_book_funcs.sh
+# ./address_book_funcs.sh
+
+===============================================================================
+=== file_mgmt.sh
+===============================================================================
+#!/bin/bash
+# file_mgmt.sh - basic file operations menu
+
+test_file() {
+  echo -n "Enter filename to test: " ; read fname
+  if [ -e "$fname" ]; then
+    echo "File '$fname' exists."
+  else
+    echo "File '$fname' does not exist."
+  fi
+}
+
+read_file() {
+  echo -n "Enter filename to read: " ; read fname
+  if [ -r "$fname" ]; then
+    echo "Contents of '$fname':"
+    cat "$fname"
+  else
+    echo "Cannot read '$fname' (does not exist or no permission)."
+  fi
+}
+
+delete_file() {
+  echo -n "Enter filename to delete: " ; read fname
+  if [ -e "$fname" ]; then
+    rm "$fname" && echo "Deleted '$fname'."
+  else
+    echo "No such file."
+  fi
+}
+
+list_files() {
+  echo "Files in current directory:"
+  ls
+}
+
+while true; do
+  echo "---- File Management Menu ----"
+  echo "1. Test if File Exists"
+  echo "2. Read a File"
+  echo "3. Delete a File"
+  echo "4. List Files"
+  echo "5. Quit"
+  echo -n "Choice [1-5]: " ; read opt
+  case $opt in
+    1) test_file ;;
+    2) read_file ;;
+    3) delete_file ;;
+    4) list_files ;;
+    5) echo "Exiting."; break ;;
+    *) echo "Invalid selection." ;;
+  esac
+done
+
+# Run:
+# chmod +x file_mgmt.sh && ./file_mgmt.sh
+
+===============================================================================
+=== fork_sort.c
+===============================================================================
+/* fork_sort.c
+   Parent does bubble sort, child does insertion sort on copied array.
+   Demonstrates fork(), separate address spaces, wait().
+*/
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/wait.h>
+
+void swap(int *x, int *y) { int t = *x; *x = *y; *y = t; }
+void bubbleSort(int arr[], int n) {
+    for(int i=0;i<n-1;i++)
+      for(int j=0;j<n-i-1;j++)
+        if(arr[j] > arr[j+1]) swap(&arr[j], &arr[j+1]);
+}
+void insertionSort(int arr[], int n) {
+    for(int i=1;i<n;i++){
+        int key = arr[i]; int j = i-1;
+        while(j>=0 && arr[j] > key){ arr[j+1]=arr[j]; j--; }
+        arr[j+1] = key;
+    }
+}
+
+int main(){
+    int n;
+    printf("Enter number of integers: ");
+    if(scanf("%d", &n)!=1) return 1;
+    int *arr = malloc(n * sizeof(int));
+    printf("Enter %d integers:\n", n);
+    for(int i=0;i<n;i++) scanf("%d", &arr[i]);
+
+    pid_t pid = fork();
+    if(pid < 0){ perror("fork"); exit(1); }
+    if(pid == 0){
+        int *childArr = malloc(n*sizeof(int));
+        for(int i=0;i<n;i++) childArr[i]=arr[i];
+        printf("Child: insertion sort\n");
+        insertionSort(childArr, n);
+        printf("Child: ");
+        for(int i=0;i<n;i++) printf("%d ", childArr[i]);
+        printf("\n");
+        free(childArr);
+        exit(0);
+    } else {
+        printf("Parent: bubble sort\n");
+        bubbleSort(arr, n);
+        printf("Parent: ");
+        for(int i=0;i<n;i++) printf("%d ", arr[i]);
+        printf("\nWaiting for child...\n");
+        wait(NULL);
+        printf("Child completed.\n");
+    }
+    free(arr);
+    return 0;
+}
+
+/*
+Compile & run:
+gcc -o fork_sort fork_sort.c
+./fork_sort
+Input: number count, then integers (space/newline separated)
+Works on Ubuntu/macOS.
+
+To show zombie: remove wait(NULL); then child may become zombie for a short time (view with ps).
+*/
+
+===============================================================================
+=== sort_and_exec.c
+===============================================================================
+/* sort_and_exec.c
+   Parent sorts array then execv()s binary_search program passing sorted array as args.
+   Requires binsearch executable (binary_search.c compiled).
+*/
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
+
+void bubbleSort(int arr[], int n){
+    for(int i=0;i<n-1;i++) for(int j=0;j<n-i-1;j++) if(arr[j]>arr[j+1]){
+        int t=arr[j]; arr[j]=arr[j+1]; arr[j+1]=t;
+    }
+}
+
+int main(){
+    int n;
+    printf("Enter number of elements: ");
+    if(scanf("%d",&n)!=1) return 1;
+    int *arr = malloc(n*sizeof(int));
+    printf("Enter %d integers:\n", n);
+    for(int i=0;i<n;i++) scanf("%d", &arr[i]);
+    bubbleSort(arr, n);
+    printf("Parent: sorted array: ");
+    for(int i=0;i<n;i++) printf("%d ", arr[i]); printf("\n");
+
+    // prepare args: ./binsearch num1 num2 ... NULL
+    char **args = malloc((n+2)*sizeof(char*));
+    args[0] = "./binsearch";
+    for(int i=0;i<n;i++){
+        args[i+1] = malloc(20);
+        sprintf(args[i+1], "%d", arr[i]);
+    }
+    args[n+1] = NULL;
+
+    execv(args[0], args);
+    perror("execv failed");
+    return 1;
+}
+
+/*
+Compile:
+gcc -o sort_and_exec sort_and_exec.c
+Also compile binary_search.c to ./binsearch (see next file).
+Run: ./sort_and_exec
+Note: execv replaces process; after exec, program becomes binsearch which will prompt for search key.
+
+No special difference on Ubuntu/macOS.
+*/
+
+===============================================================================
+=== binary_search.c
+===============================================================================
+/* binary_search.c
+   Receives sorted numbers as argv[] (argv[1..n]).
+   Prompts for a key and performs binary search.
+*/
+#include <stdio.h>
+#include <stdlib.h>
+
+int main(int argc, char *argv[]){
+    if(argc < 2){
+        printf("Usage: %s num1 num2 ...\n", argv[0]);
+        return 1;
+    }
+    int n = argc - 1;
+    int *arr = malloc(n * sizeof(int));
+    for(int i=0;i<n;i++) arr[i] = atoi(argv[i+1]);
+
+    int key;
+    printf("Enter number to search: ");
+    if(scanf("%d", &key)!=1){ free(arr); return 1; }
+
+    int low=0, high=n-1, found=0;
+    while(low <= high){
+        int mid = (low+high)/2;
+        if(arr[mid] == key){ found = 1; break; }
+        else if(arr[mid] < key) low = mid+1;
+        else high = mid-1;
+    }
+    if(found) printf("%d found.\n", key);
+    else printf("%d NOT found.\n", key);
+    free(arr);
+    return 0;
+}
+
+/*
+Compile:
+gcc -o binsearch binary_search.c
+Then run via sort_and_exec or directly:
+./binsearch 1 2 3 4 5
+Then enter search key.
+
+Works on Ubuntu/macOS.
+*/
+
+===============================================================================
+=== primes_child.c
+===============================================================================
+/* primes_child.c
+   Parent forks child which prints first N primes (N passed as argv[1]).
+*/
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/wait.h>
+#include <ctype.h>
+
+int isPrime(int num){
+    if(num < 2) return 0;
+    for(int i=2;i*i<=num;i++) if(num % i == 0) return 0;
+    return 1;
+}
+
+void printPrimes(int n){
+    int count=0, num=2;
+    while(count < n){
+        if(isPrime(num)){ printf("%d ", num); count++; }
+        num++;
+    }
+    printf("\n");
+}
+
+int main(int argc, char *argv[]){
+    if(argc != 2){ printf("Usage: %s <positive-integer>\n", argv[0]); return 1; }
+    for(int i=0; argv[1][i]; i++) if(!isdigit(argv[1][i])){ printf("Provide positive integer.\n"); return 1; }
+    int n = atoi(argv[1]); if(n<=0){ printf("n>0\n"); return 1; }
+
+    pid_t pid = fork();
+    if(pid < 0){ perror("fork"); return 1; }
+    if(pid == 0){
+        printf("Child: first %d primes:\n", n);
+        printPrimes(n);
+        exit(0);
+    } else {
+        wait(NULL);
+        printf("Parent: child finished.\n");
+    }
+    return 0;
+}
+
+/*
+Compile:
+gcc -o primes_child primes_child.c
+Run:
+./primes_child 10
+*/
+
+===============================================================================
+=== cpu_scheduling_fcfs_sjf.c
+===============================================================================
+/* cpu_scheduling_fcfs_sjf.c
+   Simulate FCFS and non-preemptive SJF. Input: number of processes and (arrival burst) pairs.
+*/
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+typedef struct {
+    char name[10];
+    int arrival, burst;
+    int completion, turnaround, waiting;
+} Process;
+
+int cmpArrival(const void *a, const void *b){
+    return ((Process*)a)->arrival - ((Process*)b)->arrival;
+}
+
+void scheduleFCFS(Process procs[], int n){
+    int time = 0;
+    for(int i=0;i<n;i++){
+        if(time < procs[i].arrival) time = procs[i].arrival;
+        procs[i].completion = time + procs[i].burst;
+        procs[i].turnaround = procs[i].completion - procs[i].arrival;
+        procs[i].waiting = procs[i].turnaround - procs[i].burst;
+        time = procs[i].completion;
+    }
+}
+
+void scheduleSJF(Process procs[], int n){
+    int time=0, completed=0;
+    int isDone[n]; memset(isDone,0,sizeof(isDone));
+    while(completed < n){
+        int idx=-1, minBurst=1e9;
+        for(int i=0;i<n;i++){
+            if(!isDone[i] && procs[i].arrival <= time && procs[i].burst < minBurst){
+                minBurst = procs[i].burst; idx = i;
+            }
+        }
+        if(idx == -1){ time++; continue; }
+        time += procs[idx].burst;
+        procs[idx].completion = time;
+        procs[idx].turnaround = procs[idx].completion - procs[idx].arrival;
+        procs[idx].waiting = procs[idx].turnaround - procs[idx].burst;
+        isDone[idx] = 1; completed++;
+    }
+}
+
+void printStats(Process procs[], int n){
+    double totalTAT=0, totalWT=0;
+    printf("\nProcess\tAT\tBT\tCT\tTAT\tWT\n");
+    for(int i=0;i<n;i++){
+        printf("%s\t%d\t%d\t%d\t%d\t%d\n", procs[i].name, procs[i].arrival, procs[i].burst, procs[i].completion, procs[i].turnaround, procs[i].waiting);
+        totalTAT += procs[i].turnaround; totalWT += procs[i].waiting;
+    }
+    printf("Avg TAT = %.2f, Avg WT = %.2f\n", totalTAT/n, totalWT/n);
+}
+
+int main(){
+    int n, choice;
+    printf("Enter number of processes: "); scanf("%d",&n);
+    Process procs[n];
+    for(int i=0;i<n;i++){
+        snprintf(procs[i].name,10,"P%d",i+1);
+        printf("Arrival and Burst for %s: ", procs[i].name);
+        scanf("%d %d",&procs[i].arrival,&procs[i].burst);
+    }
+    qsort(procs, n, sizeof(Process), cmpArrival);
+    while(1){
+        printf("\nChoose: 1=FCFS, 2=SJF (non-preemptive), 3=Exit: ");
+        scanf("%d",&choice);
+        if(choice==3) break;
+        for(int i=0;i<n;i++) procs[i].completion = procs[i].turnaround = procs[i].waiting = 0;
+        if(choice==1){ scheduleFCFS(procs,n); printf("\n--- FCFS ---\n"); }
+        else if(choice==2){ scheduleSJF(procs,n); printf("\n--- SJF (non-preemptive) ---\n"); }
+        else { printf("Invalid.\n"); continue; }
+        printStats(procs,n);
+    }
+    return 0;
+}
+
+/*
+Compile:
+gcc -o cpu_scheduling_fcfs_sjf cpu_scheduling_fcfs_sjf.c
+Run:
+./cpu_scheduling_fcfs_sjf
+Input: n, then for each process "arrival burst" numbers.
+*/
+
+===============================================================================
+=== cpu_scheduling_sjf_preemptive.c
+===============================================================================
+/* cpu_scheduling_sjf_preemptive.c
+   Shortest Remaining Time First (preemptive SJF) simulation.
+*/
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <limits.h>
+
+typedef struct {
+    char name[10];
+    int arrival, burst, rem;
+    int completion, turnaround, waiting;
+} Proc;
+
+int main(){
+    int n; printf("Enter number of processes: "); scanf("%d",&n);
+    Proc p[n];
+    for(int i=0;i<n;i++){
+        snprintf(p[i].name,10,"P%d",i+1);
+        printf("Arrival and Burst for %s: ", p[i].name);
+        scanf("%d %d", &p[i].arrival, &p[i].burst);
+        p[i].rem = p[i].burst;
+    }
+    int completed=0, time=0;
+    while(completed < n){
+        int idx=-1, minRem = INT_MAX;
+        for(int i=0;i<n;i++){
+            if(p[i].arrival <= time && p[i].rem > 0 && p[i].rem < minRem){
+                minRem = p[i].rem; idx = i;
+            }
+        }
+        if(idx == -1){ time++; continue; }
+        p[idx].rem--; time++;
+        if(p[idx].rem == 0){
+            completed++;
+            p[idx].completion = time;
+            p[idx].turnaround = p[idx].completion - p[idx].arrival;
+            p[idx].waiting = p[idx].turnaround - p[idx].burst;
+        }
+    }
+    printf("\nProcess\tAT\tBT\tCT\tTAT\tWT\n");
+    double totalTAT=0, totalWT=0;
+    for(int i=0;i<n;i++){
+        printf("%s\t%d\t%d\t%d\t%d\t%d\n", p[i].name, p[i].arrival, p[i].burst, p[i].completion, p[i].turnaround, p[i].waiting);
+        totalTAT += p[i].turnaround; totalWT += p[i].waiting;
+    }
+    printf("Avg TAT=%.2f, Avg WT=%.2f\n", totalTAT/n, totalWT/n);
+    return 0;
+}
+
+/*
+Compile:
+gcc -o sjf_preemptive cpu_scheduling_sjf_preemptive.c
+Run:
+./sjf_preemptive
+*/
+
+===============================================================================
+=== cpu_scheduling_rr.c
+===============================================================================
+/* cpu_scheduling_rr.c
+   Round Robin scheduling with time quantum=2 (change tq variable to modify).
+*/
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+typedef struct {
+    char name[10];
+    int arrival, burst, rem, completion;
+} Proc;
+
+int main(){
+    int n, tq = 2;
+    printf("Enter number of processes: "); scanf("%d", &n);
+    Proc p[n];
+    for(int i=0;i<n;i++){
+        snprintf(p[i].name,10,"P%d",i+1);
+        printf("Arrival and Burst for %s: ", p[i].name);
+        scanf("%d %d", &p[i].arrival, &p[i].burst);
+        p[i].rem = p[i].burst; p[i].completion = 0;
+    }
+    int done = 0, time = 0;
+    while(done < n){
+        int progress = 0;
+        for(int i=0;i<n;i++){
+            if(p[i].arrival <= time && p[i].rem > 0){
+                progress = 1;
+                int exec = (p[i].rem < tq) ? p[i].rem : tq;
+                p[i].rem -= exec; time += exec;
+                if(p[i].rem == 0){ done++; p[i].completion = time; }
+            }
+        }
+        if(!progress) time++;
+    }
+    printf("\nProcess\tAT\tBT\tCT\tTAT\tWT\n");
+    double totalTAT=0, totalWT=0;
+    for(int i=0;i<n;i++){
+        int tat = p[i].completion - p[i].arrival;
+        int wt = tat - p[i].burst;
+        printf("%s\t%d\t%d\t%d\t%d\t%d\n", p[i].name, p[i].arrival, p[i].burst, p[i].completion, tat, wt);
+        totalTAT += tat; totalWT += wt;
+    }
+    printf("Avg TAT=%.2f, Avg WT=%.2f\n", totalTAT/n, totalWT/n);
+    return 0;
+}
+
+/*
+Compile:
+gcc -o rr cpu_scheduling_rr.c
+Run:
+./rr
+*/
+
+===============================================================================
+=== pizza_pc.c
+===============================================================================
+/* pizza_pc.c
+   Producer-Consumer using POSIX threads and semaphores.
+*/
+#include <stdio.h>
+#include <stdlib.h>
+#include <pthread.h>
+#include <semaphore.h>
+#include <unistd.h>
+
+#define BUFFER_SIZE 5
+int buffer = 0;
+sem_t empty_slots, full_slots;
+pthread_mutex_t mutex;
+
+void *producer(void *arg){
+    for(int i=0;i<10;i++){
+        sem_wait(&empty_slots);
+        pthread_mutex_lock(&mutex);
+        buffer++;
+        printf("Producer: baked pizza %d (buffer=%d)\n", i+1, buffer);
+        pthread_mutex_unlock(&mutex);
+        sem_post(&full_slots);
+        sleep(1);
+    }
+    return NULL;
+}
+
+void *consumer(void *arg){
+    for(int i=0;i<10;i++){
+        sem_wait(&full_slots);
+        pthread_mutex_lock(&mutex);
+        buffer--;
+        printf("Consumer: took pizza (remaining buffer=%d)\n", buffer);
+        pthread_mutex_unlock(&mutex);
+        sem_post(&empty_slots);
+        sleep(2);
+    }
+    return NULL;
+}
+
+int main(){
+    pthread_t prod, cons;
+    sem_init(&empty_slots,0,BUFFER_SIZE);
+    sem_init(&full_slots,0,0);
+    pthread_mutex_init(&mutex,NULL);
+    pthread_create(&prod,NULL,producer,NULL);
+    pthread_create(&cons,NULL,consumer,NULL);
+    pthread_join(prod,NULL);
+    pthread_join(cons,NULL);
+    sem_destroy(&empty_slots);
+    sem_destroy(&full_slots);
+    pthread_mutex_destroy(&mutex);
+    return 0;
+}
+
+/*
+Compile:
+gcc -o pizza_pc pizza_pc.c -lpthread
+Run:
+./pizza_pc
+Notes: -lpthread required. Same on Ubuntu and macOS.
+*/
+
+===============================================================================
+=== sleeping_ta.c
+===============================================================================
+/* sleeping_ta.c
+   Sleeping TA (barber) problem with limited chairs.
+*/
+#include <stdio.h>
+#include <stdlib.h>
+#include <pthread.h>
+#include <semaphore.h>
+#include <unistd.h>
+
+#define NUM_CHAIRS 3
+#define NUM_STUDENTS 5
+
+sem_t ta_sem;
+sem_t student_sem;
+pthread_mutex_t mutex;
+int waiting = 0;
+
+void *TA(void *arg){
+    while(1){
+        sem_wait(&student_sem);
+        pthread_mutex_lock(&mutex);
+        waiting--;
+        pthread_mutex_unlock(&mutex);
+        printf("TA: Helping a student. Chairs free: %d\n", NUM_CHAIRS - waiting);
+        sleep(3);
+        printf("TA: Done helping student.\n");
+        sem_post(&ta_sem);
+    }
+    return NULL;
+}
+
+void *student(void *arg){
+    int id = *(int*)arg;
+    while(1){
+        pthread_mutex_lock(&mutex);
+        if(waiting < NUM_CHAIRS){
+            waiting++;
+            printf("Student %d: Sitting. Waiting=%d\n", id, waiting);
+            pthread_mutex_unlock(&mutex);
+            sem_post(&student_sem);
+            sem_wait(&ta_sem);
+            printf("Student %d: Got help and leaving.\n", id);
+            return NULL;
+        } else {
+            pthread_mutex_unlock(&mutex);
+            printf("Student %d: No chair; will come later.\n", id);
+            sleep(5);
+        }
+    }
+    return NULL;
+}
+
+int main(){
+    pthread_t ta, stud[NUM_STUDENTS];
+    sem_init(&ta_sem,0,0);
+    sem_init(&student_sem,0,0);
+    pthread_mutex_init(&mutex,NULL);
+    pthread_create(&ta,NULL,TA,NULL);
+    int ids[NUM_STUDENTS];
+    for(int i=0;i<NUM_STUDENTS;i++){
+        ids[i]=i+1;
+        pthread_create(&stud[i],NULL,student,&ids[i]);
+    }
+    for(int i=0;i<NUM_STUDENTS;i++) pthread_join(stud[i],NULL);
+    // In this test TA runs forever; program may exit after students done.
+    exit(0);
+}
+
+/*
+Compile:
+gcc -o sleeping_ta sleeping_ta.c -lpthread
+Run:
+./sleeping_ta
+*/
+
+===============================================================================
+=== file_pc.c
+===============================================================================
+/* file_pc.c
+   Producer writes numbers to a file, consumer reads them using semaphores.
+   Buffer size effectively 1 (the file).
+*/
+#include <stdio.h>
+#include <stdlib.h>
+#include <pthread.h>
+#include <semaphore.h>
+#include <unistd.h>
+
+sem_t data_ready, data_consumed;
+pthread_mutex_t mutex;
+
+void *producer(void *arg){
+    FILE *fp;
+    for(int i=0;i<10;i++){
+        int num = rand() % 10;
+        usleep((rand()%100) * 1000);
+        sem_wait(&data_consumed);
+        pthread_mutex_lock(&mutex);
+        fp = fopen("data.txt", "w");
+        fprintf(fp, "%d\n", num);
+        fclose(fp);
+        printf("Producer: wrote %d to file.\n", num);
+        pthread_mutex_unlock(&mutex);
+        sem_post(&data_ready);
+    }
+    return NULL;
+}
+
+void *consumer(void *arg){
+    FILE *fp;
+    for(int i=0;i<10;i++){
+        sem_wait(&data_ready);
+        pthread_mutex_lock(&mutex);
+        fp = fopen("data.txt", "r");
+        int num;
+        fscanf(fp, "%d", &num);
+        fclose(fp);
+        printf("Consumer: read %d from file.\n", num);
+        pthread_mutex_unlock(&mutex);
+        sem_post(&data_consumed);
+    }
+    return NULL;
+}
+
+int main(){
+    srand(time(NULL));
+    sem_init(&data_ready,0,0);
+    sem_init(&data_consumed,0,1);
+    pthread_mutex_init(&mutex,NULL);
+    pthread_t prod, cons;
+    pthread_create(&prod,NULL,producer,NULL);
+    pthread_create(&cons,NULL,consumer,NULL);
+    pthread_join(prod,NULL);
+    pthread_join(cons,NULL);
+    sem_destroy(&data_ready); sem_destroy(&data_consumed);
+    pthread_mutex_destroy(&mutex);
+    return 0;
+}
+
+/*
+Compile:
+gcc -o file_pc file_pc.c -lpthread
+Run:
+./file_pc
+*/
+
+===============================================================================
+=== readers_writers.c
+===============================================================================
+/* readers_writers.c
+   Readers-priority solution for multiple readers and writers.
+*/
+#include <stdio.h>
+#include <pthread.h>
+#include <semaphore.h>
+#include <unistd.h>
+
+int readCount = 0;
+sem_t rw_sem, mutex;
+
+void *reader(void *arg){
+    int id = *(int*)arg;
+    sem_wait(&mutex);
+    readCount++;
+    if(readCount == 1) sem_wait(&rw_sem);
+    sem_post(&mutex);
+
+    printf("Reader %d: reading\n", id);
+    sleep(2);
+
+    sem_wait(&mutex);
+    readCount--;
+    if(readCount == 0) sem_post(&rw_sem);
+    sem_post(&mutex);
+
+    printf("Reader %d: done\n", id);
+    return NULL;
+}
+
+void *writer(void *arg){
+    int id = *(int*)arg;
+    sem_wait(&rw_sem);
+    printf("Writer %d: writing\n", id);
+    sleep(3);
+    printf("Writer %d: done\n", id);
+    sem_post(&rw_sem);
+    return NULL;
+}
+
+int main(){
+    pthread_t r[3], w[2];
+    sem_init(&rw_sem,0,1); sem_init(&mutex,0,1);
+    int r_ids[3]={1,2,3}, w_ids[2]={1,2};
+    for(int i=0;i<3;i++) pthread_create(&r[i],NULL,reader,&r_ids[i]);
+    for(int i=0;i<2;i++) pthread_create(&w[i],NULL,writer,&w_ids[i]);
+    for(int i=0;i<3;i++) pthread_join(r[i],NULL);
+    for(int i=0;i<2;i++) pthread_join(w[i],NULL);
+    sem_destroy(&rw_sem); sem_destroy(&mutex);
+    return 0;
+}
+
+/*
+Compile:
+gcc -o rw readers_writers.c -lpthread
+Run:
+./rw
+*/
+
+===============================================================================
+=== bankers.c
+===============================================================================
+/* bankers.c
+   Banker's safety algorithm. Inputs are read interactively.
+*/
+#include <stdio.h>
+#include <stdlib.h>
+
+int main(){
+    int n,m;
+    printf("Number of processes: "); scanf("%d",&n);
+    printf("Number of resource types: "); scanf("%d",&m);
+    int alloc[n][m], max[n][m], need[n][m], avail[m];
+    printf("Enter Allocation matrix (%d x %d):\n", n, m);
+    for(int i=0;i<n;i++) for(int j=0;j<m;j++) scanf("%d",&alloc[i][j]);
+    printf("Enter Max matrix (%d x %d):\n", n, m);
+    for(int i=0;i<n;i++) for(int j=0;j<m;j++) scanf("%d",&max[i][j]);
+    printf("Enter Available vector (%d):\n", m);
+    for(int j=0;j<m;j++) scanf("%d",&avail[j]);
+    for(int i=0;i<n;i++) for(int j=0;j<m;j++) need[i][j] = max[i][j] - alloc[i][j];
+
+    int finish[n]; for(int i=0;i<n;i++) finish[i]=0;
+    int safeSeq[n], idx=0;
+    for(int k=0;k<n;k++){
+        for(int i=0;i<n;i++){
+            if(!finish[i]){
+                int j;
+                for(j=0;j<m;j++) if(need[i][j] > avail[j]) break;
+                if(j==m){
+                    for(int y=0;y<m;y++) avail[y] += alloc[i][y];
+                    finish[i]=1; safeSeq[idx++]=i;
+                }
+            }
+        }
+    }
+    int safe = 1;
+    for(int i=0;i<n;i++) if(!finish[i]){ safe=0; break; }
+    if(safe){
+        printf("Safe state. Sequence: ");
+        for(int i=0;i<idx;i++) printf("P%d ", safeSeq[i]);
+        printf("\n");
+    } else printf("System NOT in safe state.\n");
+    return 0;
+}
+
+/*
+Compile:
+gcc -o bankers bankers.c
+Run:
+./bankers
+Input: interactive matrices as prompted.
+*/
+
+===============================================================================
+=== page_replace.c
+===============================================================================
+/* page_replace.c
+   Simulates FIFO and LRU on a random reference string.
+*/
+#include <stdio.h>
+#include <stdlib.h>
+#include <limits.h>
+#include <time.h>
+
+#define MAX_REF 20
+#define MAX_PAGE 10
+
+void generateRef(int ref[], int n){
+    for(int i=0;i<n;i++) ref[i] = rand() % MAX_PAGE;
+}
+
+int fifo(int ref[], int n, int frames){
+    int faults=0;
+    int *queue = malloc(frames * sizeof(int));
+    for(int i=0;i<frames;i++) queue[i] = -1;
+    int idx=0;
+    for(int i=0;i<n;i++){
+        int page = ref[i], found=0;
+        for(int j=0;j<frames;j++) if(queue[j]==page){ found=1; break; }
+        if(!found){
+            queue[idx] = page; idx = (idx+1)%frames; faults++;
+        }
+    }
+    free(queue);
+    return faults;
+}
+
+int lru(int ref[], int n, int frames){
+    int faults=0;
+    int *framesArr = malloc(frames * sizeof(int));
+    for(int i=0;i<frames;i++) framesArr[i] = -1;
+    for(int i=0;i<n;i++){
+        int page = ref[i], found=0;
+        for(int j=0;j<frames;j++) if(framesArr[j]==page){ found=1; break; }
+        if(!found){
+            int *recent = malloc(frames * sizeof(int));
+            for(int f=0; f<frames; f++){
+                recent[f] = INT_MAX;
+                if(framesArr[f] == -1) continue;
+                for(int k=i-1;k>=0;k--) if(ref[k] == framesArr[f]){ recent[f] = i-k; break; }
+            }
+            int max = -1, victim=0;
+            for(int f=0; f<frames; f++) if(recent[f] > max){ max = recent[f]; victim = f; }
+            framesArr[victim] = page; faults++;
+            free(recent);
+        }
+    }
+    free(framesArr);
+    return faults;
+}
+
+int main(){
+    srand(time(NULL));
+    int refLen = MAX_REF;
+    int ref[refLen];
+    generateRef(ref, refLen);
+    printf("Reference string: ");
+    for(int i=0;i<refLen;i++) printf("%d ", ref[i]); printf("\n\n");
+    printf("Frames | FIFO faults | LRU faults\n");
+    for(int f=1; f<=7; f++){
+        int faultsFIFO = fifo(ref, refLen, f);
+        int faultsLRU = lru(ref, refLen, f);
+        printf("%6d | %11d | %10d\n", f, faultsFIFO, faultsLRU);
+    }
+    return 0;
+}
+
+/*
+Compile:
+gcc -o page_replace page_replace.c
+Run:
+./page_replace
+*/
+
+===============================================================================
+=== page_opt_lru.c
+===============================================================================
+/* page_opt_lru.c
+   Compare Optimal and LRU for fixed reference string.
+*/
+#include <stdio.h>
+#include <limits.h>
+
+int ref[] = {1,2,3,4,1,2,5,1,1,2,3,4,5};
+int n = 13;
+
+int optimal(int frames){
+    int faults = 0;
+    int current[frames];
+    for(int i=0;i<frames;i++) current[i] = -1;
+    for(int i=0;i<n;i++){
+        int page = ref[i], found=0;
+        for(int j=0;j<frames;j++) if(current[j]==page){ found=1; break; }
+        if(!found){
+            faults++;
+            int farthest = -1, idx = -1;
+            for(int j=0;j<frames;j++){
+                if(current[j]==-1){ idx = j; break; }
+                int k;
+                for(k=i+1;k<n;k++) if(ref[k]==current[j]) break;
+                if(k > farthest){ farthest = k; idx = j; }
+            }
+            current[idx] = page;
+        }
+    }
+    return faults;
+}
+
+int lru_fixed(int frames){
+    int faults = 0;
+    int current[frames];
+    for(int i=0;i<frames;i++) current[i] = -1;
+    for(int i=0;i<n;i++){
+        int page = ref[i], found=0;
+        for(int j=0;j<frames;j++) if(current[j]==page){ found=1; break; }
+        if(!found){
+            int recent[frames];
+            for(int j=0;j<frames;j++){
+                recent[j] = -1;
+                for(int k=i-1;k>=0;k--) if(ref[k]==current[j]){ recent[j] = i-k; break; }
+                if(current[j]==-1) recent[j] = INT_MAX;
+            }
+            int max=-1, idx=0;
+            for(int j=0;j<frames;j++) if(recent[j] > max){ max = recent[j]; idx=j; }
+            current[idx] = page; faults++;
+        }
+    }
+    return faults;
+}
+
+int main(){
+    for(int frames=3; frames<=4; frames++){
+        int opt = optimal(frames);
+        int lru = lru_fixed(frames);
+        printf("Frames=%d: Optimal=%d, LRU=%d\n", frames, opt, lru);
+    }
+    return 0;
+}
+
+/*
+Compile:
+gcc -o opt_lru page_opt_lru.c
+Run:
+./opt_lru
+*/
+
+===============================================================================
+=== sender.c
+===============================================================================
+/* sender.c
+   System V message queue sender.
+   Note: System V message queues may not be available on macOS by default.
+*/
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/ipc.h>
+#include <sys/msg.h>
+
+#define MAX_TEXT 100
+typedef struct msgbuf {
+    long mtype;
+    char mtext[MAX_TEXT];
+} message;
+
+int main(){
+    key_t key = ftok("queuefile", 65);
+    int msgid = msgget(key, 0666 | IPC_CREAT);
+    message msg;
+    printf("Enter messages. Type 'exit' to quit.\n");
+    while(1){
+        printf("Message: ");
+        fgets(msg.mtext, MAX_TEXT, stdin);
+        msg.mtext[strcspn(msg.mtext, "\n")] = 0;
+        if(strcmp(msg.mtext, "exit")==0) break;
+        printf("Type (number) to send: ");
+        if(scanf("%ld%*c",&msg.mtype)!=1) { printf("type error\n"); break; }
+        if(msgsnd(msgid, &msg, strlen(msg.mtext)+1, 0)==-1) perror("msgsnd");
+    }
+    msgctl(msgid, IPC_RMID, NULL);
+    printf("Sender: Queue removed, exiting.\n");
+    return 0;
+}
+
+/*
+Compile:
+gcc -o sender sender.c
+Run:
+./sender
+Notes:
+- Create a small empty file named 'queuefile' in same directory: touch queuefile
+- On Ubuntu it works. On macOS System V message queues are often unavailable; use Linux for exam.
+*/
+
+===============================================================================
+=== receiver.c
+===============================================================================
+/* receiver.c
+   Receives from System V message queue, converts to uppercase.
+*/
+#include <stdio.h>
+#include <ctype.h>
+#include <string.h>
+#include <sys/ipc.h>
+#include <sys/msg.h>
+
+#define MAX_TEXT 100
+typedef struct msgbuf {
+    long mtype;
+    char mtext[MAX_TEXT];
+} message;
+
+int main(){
+    key_t key = ftok("queuefile", 65);
+    int msgid = msgget(key, 0666 | IPC_CREAT);
+    message msg;
+    printf("Receiver: Waiting for messages...\n");
+    while(1){
+        if(msgrcv(msgid, &msg, sizeof(msg.mtext), 0, 0)==-1){ perror("msgrcv"); exit(1); }
+        if(strcmp(msg.mtext, "exit")==0) break;
+        for(int i=0; msg.mtext[i]; i++) msg.mtext[i] = toupper(msg.mtext[i]);
+        printf("Received (type %ld): %s\n", msg.mtype, msg.mtext);
+    }
+    msgctl(msgid, IPC_RMID, NULL);
+    printf("Receiver: Exiting.\n");
+    return 0;
+}
+
+/*
+Compile:
+gcc -o receiver receiver.c
+Run:
+1) In terminal A: ./receiver
+2) In terminal B: ./sender
+3) Use sender to send messages.
+Note: Works on Ubuntu. macOS may not have System V IPC by default.
+*/
+
+===============================================================================
+=== server_shm.c
+===============================================================================
+/* server_shm.c
+   Server creates System V shared memory and writes a message.
+   Note: System V shared memory may not be available on macOS (prefer Ubuntu).
+*/
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/ipc.h>
+#include <sys/shm.h>
+#include <unistd.h>
+
+#define SHM_SIZE 100
+
+int main(){
+    key_t key = ftok("shmfile",65);
+    int shmid = shmget(key, SHM_SIZE, 0666|IPC_CREAT);
+    char *data = (char*) shmat(shmid, NULL, 0);
+    char msg[] = "Hello from server!";
+    strncpy(data, msg, SHM_SIZE);
+    printf("Server wrote: %s\n", data);
+    sleep(10); // keep segment usable for client
+    shmdt(data);
+    shmctl(shmid, IPC_RMID, NULL);
+    return 0;
+}
+
+/*
+Compile:
+gcc -o server_shm server_shm.c
+Run:
+./server_shm
+Note: Create file 'shmfile' first: touch shmfile
+Use Ubuntu for exam; macOS System V shared memory not standard.
+*/
+
+===============================================================================
+=== client_shm.c
+===============================================================================
+/* client_shm.c
+   Client attaches to System V shared memory and reads message.
+*/
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/ipc.h>
+#include <sys/shm.h>
+#include <unistd.h>
+
+int main(){
+    key_t key = ftok("shmfile",65);
+    int shmid = shmget(key, 0, 0666);
+    if(shmid < 0){ perror("shmget"); exit(1); }
+    char *data = (char*) shmat(shmid, NULL, 0);
+    sleep(1);
+    printf("Client read: %s\n", data);
+    shmdt(data);
+    return 0;
+}
+
+/*
+Compile:
+gcc -o client_shm client_shm.c
+Run:
+1) ./server_shm (in one terminal)
+2) ./client_shm (in another)
+Note: Use Ubuntu for reliability.
+*/
+
+===============================================================================
+=== disk_cscan_clook.c
+===============================================================================
+/* disk_cscan_clook.c
+   Compute C-SCAN and C-LOOK sequences and total head movement for a fixed request set.
+*/
+#include <stdio.h>
+#include <stdlib.h>
+
+void cscan(int req[], int n, int head, int diskSize) {
+    int totalMovement = 0;
+    int current = head;
+    int right[n], left[n], r=0, l=0;
+    for(int i=0;i<n;i++){
+        if(req[i] >= head) right[r++] = req[i]; else left[l++] = req[i];
+    }
+    // sort
+    for(int i=0;i<r;i++) for(int j=i+1;j<r;j++) if(right[i]>right[j]){int t=right[i];right[i]=right[j];right[j]=t;}
+    for(int i=0;i<l;i++) for(int j=i+1;j<l;j++) if(left[i]>left[j]){int t=left[i];left[i]=left[j];left[j]=t;}
+    printf("C-SCAN sequence: %d", head);
+    for(int i=0;i<r;i++){ printf(" -> %d", right[i]); totalMovement += abs(current - right[i]); current = right[i]; }
+    // move to end
+    totalMovement += abs(current - (diskSize-1));
+    current = 0;
+    totalMovement += (diskSize-1 - 0); // accounted as jump cost if considered; if jump cost not counted, omit this line.
+    for(int i=0;i<l;i++){ printf(" -> %d", left[i]); totalMovement += abs(current - left[i]); current = left[i]; }
+    printf("\nTotal head movement: %d, Average seek = %.2f\n", totalMovement, (double)totalMovement/n);
+}
+
+void clook(int req[], int n, int head) {
+    int totalMovement = 0;
+    int current = head;
+    int right[n], left[n], r=0, l=0;
+    for(int i=0;i<n;i++){ if(req[i] >= head) right[r++] = req[i]; else left[l++] = req[i]; }
+    for(int i=0;i<r;i++) for(int j=i+1;j<r;j++) if(right[i]>right[j]){int t=right[i];right[i]=right[j];right[j]=t;}
+    for(int i=0;i<l;i++) for(int j=i+1;j<l;j++) if(left[i]>left[j]){int t=left[i];left[i]=left[j];left[j]=t;}
+    printf("C-LOOK sequence: %d", head);
+    for(int i=0;i<r;i++){ printf(" -> %d", right[i]); totalMovement += abs(current - right[i]); current = right[i]; }
+    if(l>0){ totalMovement += abs(current - left[0]); current = left[0]; }
+    for(int i=0;i<l;i++){ printf(" -> %d", left[i]); totalMovement += abs(current - left[i]); current = left[i]; }
+    printf("\nTotal head movement: %d, Average seek = %.2f\n", totalMovement, (double)totalMovement/n);
+}
+
+int main(){
+    int diskSize = 500, head = 85;
+    int requests[] = {10,229,39,400,18,145,120,480,20,250};
+    int n = sizeof(requests)/sizeof(requests[0]);
+    printf("Head at %d, requests: ", head);
+    for(int i=0;i<n;i++) printf("%d ", requests[i]);
+    printf("\n\n");
+    cscan(requests,n,head,diskSize);
+    clook(requests,n,head);
+    return 0;
+}
+
+/*
+Compile:
+gcc -o disk_cscan_clook disk_cscan_clook.c
+Run:
+./disk_cscan_clook
+*/
+
+===============================================================================
+=== disk_scan_look.c
+===============================================================================
+/* disk_scan_look.c
+   SCAN and LOOK simulations for a fixed request list.
+*/
+#include <stdio.h>
+#include <stdlib.h>
+
+void scanAlgo(int req[], int n, int head, int diskSize){
+    int movement=0, current=head;
+    int left[n], right[n], l=0, r=0;
+    for(int i=0;i<n;i++){ if(req[i] >= head) right[r++]=req[i]; else left[l++]=req[i]; }
+    for(int i=0;i<r;i++) for(int j=i+1;j<r;j++) if(right[i]>right[j]){int t=right[i]; right[i]=right[j]; right[j]=t;}
+    for(int i=0;i<l;i++) for(int j=i+1;j<l;j++) if(left[i]>left[j]){int t=left[i]; left[i]=left[j]; left[j]=t;}
+    printf("SCAN sequence: %d", head);
+    for(int i=0;i<r;i++){ printf(" -> %d", right[i]); movement += abs(current-right[i]); current = right[i]; }
+    movement += abs(current - (diskSize-1));
+    current = diskSize-1;
+    for(int i=l-1;i>=0;i--){ printf(" -> %d", left[i]); movement += abs(current - left[i]); current = left[i]; }
+    printf("\nTotal head movement: %d, Avg seek=%.2f\n", movement, (double)movement/n);
+}
+
+void lookAlgo(int req[], int n, int head){
+    int movement=0, current=head;
+    int left[n], right[n], l=0, r=0;
+    for(int i=0;i<n;i++){ if(req[i] >= head) right[r++]=req[i]; else left[l++]=req[i]; }
+    for(int i=0;i<r;i++) for(int j=i+1;j<r;j++) if(right[i]>right[j]){int t=right[i]; right[i]=right[j]; right[j]=t;}
+    for(int i=0;i<l;i++) for(int j=i+1;j<l;j++) if(left[i]>left[j]){int t=left[i]; left[i]=left[j]; left[j]=t;}
+    printf("LOOK sequence: %d", head);
+    for(int i=0;i<r;i++){ printf(" -> %d", right[i]); movement += abs(current-right[i]); current = right[i]; }
+    if(l>0){
+        movement += abs(current - left[l-1]);
+        current = left[l-1];
+        printf(" -> %d", current);
+        for(int i=l-2;i>=0;i--){ printf(" -> %d", left[i]); movement += abs(current-left[i]); current = left[i]; }
+    }
+    printf("\nTotal head movement: %d, Avg seek=%.2f\n", movement, (double)movement/n);
+}
+
+int main(){
+    int diskSize = 500, head = 185;
+    int requests[] = {20,229,39,450,18,145,120,380,20,250};
+    int n = sizeof(requests)/sizeof(int);
+    printf("Head at %d, requests: ", head);
+    for(int i=0;i<n;i++) printf("%d ", requests[i]); printf("\n\n");
+    scanAlgo(requests, n, head, diskSize);
+    lookAlgo(requests, n, head);
+    return 0;
+}
+
+/*
+Compile:
+gcc -o disk_scan_look disk_scan_look.c
+Run:
+./disk_scan_look
+*/
+
+===============================================================================
+=== End of file block
+===============================================================================
+
+
+---
+
+Final notes & quick checklist
+
+Save the whole block or copy individual sections into files named exactly as the headers (e.g., fork_sort.c, pizza_pc.c, address_book.sh).
+
+For Bash scripts: chmod +x <script>.sh then ./<script>.sh.
+
+For C programs:
+
+Simple: gcc -o <binary> <source.c>
+
+If pthreads used: gcc -o <binary> <source.c> -lpthread
+
+If using System V IPC (msg/shm): gcc -o <binary> <source.c> (works on Linux/Ubuntu); macOS may not support sysv msg/shm without additional setup—prefer Ubuntu for exam.
+
+
+If a program expects interactive input, follow prompts. Many CPU scheduling programs take process count then arrival burst pairs. Banker's algorithm reads matrices interactively.
+
+For message queue and shared memory examples: create the ftok key files first if needed:
+
+touch queuefile
+
+touch shmfile
+
+
+If you want the single block packaged into a downloadable .txt file on this environment, tell me and I can produce a downloadable file (or I can format it differently if you'd like).
+
+
+If you want, I can:
+
+Convert this into a single .sh driver that extracts files and writes them to disk, or
+
+Produce a zip with all files (one command you run to create them), or
+
